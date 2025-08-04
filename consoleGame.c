@@ -1,13 +1,27 @@
 #include <stdio.h>
+//TODO: Want to find another way to get terminal size without library
 #include <sys/ioctl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 typedef unsigned int uint32;
 typedef unsigned long uint64;
 typedef unsigned short uint16;
 typedef unsigned char uint8;
 typedef unsigned char byte;
+
+typedef struct {
+	char* data;
+	uint16 width;
+	uint16 height;
+}Sprite;
+
+typedef struct {
+	char* data;
+	uint16 width;
+	uint16 height;
+}ScreenBuffer;
 
 void clear_screen(){
 	struct winsize term_size;
@@ -24,7 +38,19 @@ void clear_screen(){
 	free(empty_row);
 }
 
-void print_frame(){
+void blit_sprite(ScreenBuffer *screen_buffer, Sprite *sprite, uint32 x, uint32 y){
+	uint32 screen_row = y;
+	for(uint32 sprite_row=0; sprite_row<sprite->height; sprite_row++){
+		uint32 screen_col = x;
+		for(uint32 sprite_col=0; sprite_col<sprite->width; sprite_col++){
+			screen_buffer->data[screen_row*screen_buffer->width + screen_col] = sprite->data[sprite_row*sprite->width + sprite_col];
+			screen_col++;
+		}
+		screen_row++;
+	}
+}
+
+void print_frame(ScreenBuffer *screen_buffer){
 	struct winsize term_size;
 	ioctl(0, TIOCGWINSZ, &term_size);
 	uint16 term_height = term_size.ws_row;
@@ -47,16 +73,15 @@ void print_frame(){
 		printf("\n");
 	}
 
-	char *filled_row = malloc(sizeof(char)*window_width + 1);
 	free(empty_row);
-	memset(filled_row, '#', window_width);
-	filled_row[window_width] = '\0';
 	empty_row = malloc(sizeof(char)*horizontal_padding+1);
 	memset(empty_row, ' ', horizontal_padding);
 	empty_row[horizontal_padding] = '\0';
 	for(uint32 row=0; row<window_height; row++){
 		printf("%s", empty_row);
-		printf("%s", filled_row);
+		for(uint32 col=0; col<screen_buffer->width; col++){
+			printf("%c", screen_buffer->data[row*screen_buffer->width + col]);
+		}
 		printf("\n");
 	}
 	
@@ -66,9 +91,33 @@ void print_frame(){
 	}
 }
 
+void screen_buffer_init(ScreenBuffer *screen_buffer, uint32 width, uint32 height){
+	screen_buffer->data = malloc(sizeof(char)*width*height);
+	screen_buffer->width = width;
+	screen_buffer->height =height;
+	for(uint32 row=0; row<screen_buffer->height; row++){
+		for(uint32 col=0; col<screen_buffer->width; col++){
+			screen_buffer->data[row*screen_buffer->width + col] = ' ';
+		}
+	}
+}
+
 int main(int argc, char** argv){
+	char* card = "/==============\\|+3            ||              ||  ___    ___  || /   \\__/   \\ || |          | ||  |        |  ||   \\_    _/   ||     \\__/     ||              ||              ||              ||            +3|\\==============/";
+	ScreenBuffer screen_buffer;
+	Sprite sprite;
+	sprite.width = 16;
+	sprite.height = 14;
+	sprite.data = malloc(sizeof(char)*sprite.width*sprite.height);
+	for(uint32 i=0; i<sprite.height*sprite.width; i++){
+		sprite.data[i] = card[i];	
+	}
+	printf("%s", sprite.data);
 	clear_screen();
-	print_frame();
+	screen_buffer_init(&screen_buffer, 60, 60);
+	blit_sprite(&screen_buffer, &sprite, 0, 0);
+	blit_sprite(&screen_buffer, &sprite, 10, 10);
+	print_frame(&screen_buffer);
 }
 
 
