@@ -23,6 +23,11 @@ typedef struct {
 	uint16 height;
 }ScreenBuffer;
 
+typedef struct {
+	ScreenBuffer *screen_buffer;
+	Sprite *sprite;
+}TerminalRendererHandel;
+
 void clear_screen(){
 	struct winsize term_size;
 	ioctl(0, TIOCGWINSZ, &term_size);
@@ -128,8 +133,10 @@ void screen_buffer_init(ScreenBuffer *screen_buffer, uint32 width, uint32 height
 	}
 }
 
-void close_renderer(){
-
+void close_renderer(TerminalRendererHandel *terminal_renderer_h){
+	free(terminal_renderer_h->sprite->data);
+	free(terminal_renderer_h->screen_buffer->data);
+	printf("\e[?25h");
 }
 
 int main(int argc, char** argv){
@@ -137,6 +144,9 @@ int main(int argc, char** argv){
 	char* card = "/==============\\|+3            ||              ||  ___    ___  || /   \\__/   \\ || |          | ||  |        |  ||   \\_    _/   ||     \\__/     ||              ||              ||              ||            +3|\\==============/";
 	ScreenBuffer screen_buffer;
 	Sprite sprite;
+	TerminalRendererHandel terminal_renderer_h;
+	terminal_renderer_h.screen_buffer = &screen_buffer;
+	terminal_renderer_h.sprite = &sprite;
 	sprite.width = 16;
 	sprite.height = 14;
 	sprite.data = malloc(sizeof(char)*sprite.width*sprite.height);
@@ -150,15 +160,13 @@ int main(int argc, char** argv){
 	clear_screen();
 	uint32 running = 1;
 	uint32 frame = 0;
-	while(frame < 10000){
+	while(frame < 5000){
 		screen_buffer_clear(&screen_buffer);
 		blit_sprite(&screen_buffer, &sprite, frame/100, frame/100);
 		print_frame(&screen_buffer);
 		frame++;
 	}
-	close_renderer();
-	free(screen_buffer.data);
-	free(sprite.data);
+	close_renderer(&terminal_renderer_h);
 }
 
 
