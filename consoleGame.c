@@ -31,7 +31,7 @@ void clear_screen(){
 	char* empty_row = malloc(sizeof(char)*term_width + 1);
 	memset(empty_row, ' ', term_width);
 	empty_row[term_width] = '\0';
-	for(int row=0; row<term_height; row++){
+	for(int row=0; row<term_height-1; row++){
 		printf("%s", empty_row);
 		printf("\n");
 	}
@@ -47,6 +47,12 @@ void blit_sprite(ScreenBuffer *screen_buffer, Sprite *sprite, uint32 x, uint32 y
 			screen_col++;
 		}
 		screen_row++;
+	}
+}
+
+void screen_buffer_clear(ScreenBuffer *screen_buffer){
+	for(uint32 i=0; i<screen_buffer->width*screen_buffer->height; i++){
+		screen_buffer->data[i] = ' ';
 	}
 }
 
@@ -103,6 +109,7 @@ void screen_buffer_init(ScreenBuffer *screen_buffer, uint32 width, uint32 height
 }
 
 int main(int argc, char** argv){
+	printf("\e[?25l");
 	char* card = "/==============\\|+3            ||              ||  ___    ___  || /   \\__/   \\ || |          | ||  |        |  ||   \\_    _/   ||     \\__/     ||              ||              ||              ||            +3|\\==============/";
 	ScreenBuffer screen_buffer;
 	Sprite sprite;
@@ -113,11 +120,18 @@ int main(int argc, char** argv){
 		sprite.data[i] = card[i];	
 	}
 	printf("%s", sprite.data);
-	clear_screen();
 	screen_buffer_init(&screen_buffer, 60, 60);
-	blit_sprite(&screen_buffer, &sprite, 0, 0);
-	blit_sprite(&screen_buffer, &sprite, 10, 10);
-	print_frame(&screen_buffer);
+
+
+	clear_screen();
+	uint32 running = 1;
+	uint32 frame = 0;
+	while(running){
+		screen_buffer_clear(&screen_buffer);
+		blit_sprite(&screen_buffer, &sprite, frame/100, frame/100);
+		print_frame(&screen_buffer);
+		frame++;
+	}
 }
 
 
