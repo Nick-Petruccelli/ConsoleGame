@@ -62,36 +62,47 @@ void print_frame(ScreenBuffer *screen_buffer){
 	uint16 term_height = term_size.ws_row;
 	uint16 term_width = term_size.ws_col;
 
-	uint32 window_width = 30;
-	uint32 window_height = 30;
-
 	for(uint32 row=0; row<term_height; row++){
 		printf("\033[F");
 	}
 
-	uint32 vertical_padding = (term_height - window_height) / 2;
-	uint32 horizontal_padding = (term_width - window_width) / 2;
+	uint32 vertical_padding = (term_height - screen_buffer->height) / 2;
+	uint32 horizontal_padding = (term_width - screen_buffer->width) / 2;
 	char* empty_row = malloc(sizeof(char)*term_width + 1);
 	memset(empty_row, ' ', term_width);
 	empty_row[term_width] = '\0';
-	for(uint32 row=0; row<vertical_padding; row++){
+	for(uint32 row=0; row<vertical_padding-1; row++){
 		printf("%s", empty_row);
 		printf("\n");
 	}
 
+
 	free(empty_row);
 	empty_row = malloc(sizeof(char)*horizontal_padding+1);
 	memset(empty_row, ' ', horizontal_padding);
+	empty_row[horizontal_padding-1] = '/';
 	empty_row[horizontal_padding] = '\0';
-	for(uint32 row=0; row<window_height; row++){
+	char *top_bot_border = malloc(sizeof(char)*screen_buffer->width+1);
+	memset(top_bot_border, '=', screen_buffer->width);
+	top_bot_border[screen_buffer->width] = '\0';
+
+	printf("%s", empty_row);
+	printf("%s\\\n", top_bot_border);
+	empty_row[horizontal_padding-1] = '|';
+	for(uint32 row=0; row<screen_buffer->height; row++){
 		printf("%s", empty_row);
 		for(uint32 col=0; col<screen_buffer->width; col++){
 			printf("%c", screen_buffer->data[row*screen_buffer->width + col]);
 		}
-		printf("\n");
+		printf("|\n");
 	}
 	
-	for(uint32 row=0; row<vertical_padding; row++){
+
+	empty_row[horizontal_padding-1] = '\\';
+	printf("%s", empty_row);
+	printf("%s/\n", top_bot_border);
+	empty_row[horizontal_padding-1] = ' ';
+	for(uint32 row=0; row<vertical_padding-1; row++){
 		printf("%s", empty_row);
 		printf("\n");
 	}
@@ -120,7 +131,7 @@ int main(int argc, char** argv){
 		sprite.data[i] = card[i];	
 	}
 	printf("%s", sprite.data);
-	screen_buffer_init(&screen_buffer, 60, 60);
+	screen_buffer_init(&screen_buffer, 80, 50);
 
 
 	clear_screen();
