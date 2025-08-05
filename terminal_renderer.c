@@ -70,8 +70,23 @@ internal uint32 terminal_renderer_load_sprite(TerminalRendererHandel *terminal_r
 
 	uint32 newlinecount = 0;
 	char *cur_char = sprite_txt;
+	uint32 height = 0;
+	while(*cur_char != '\0'){
+		if(*cur_char == '\n'){
+			char *temp = cur_char;
+			while(*temp){
+				*temp = *(temp+1);
+				temp++;
+			}
+			height++;
+			continue;
+		}
+		cur_char++;
+	}
 
 	sprite_container.sprites[sprite_container.sprite_count].data = sprite_txt;
+	sprite_container.sprites[sprite_container.sprite_count].height = height;
+	sprite_container.sprites[sprite_container.sprite_count].width = (size/height)-1;
 	return sprite_container.sprite_count++;
 }
 
@@ -82,18 +97,6 @@ internal void terminal_renderer_blit_sprite(TerminalRendererHandel *terminal_ren
 	uint32 screen_col = x;
 	
 	char *cur_char = sprite.data;
-	while(*cur_char){
-		if(*cur_char == '\n'){
-			screen_row++;
-			screen_col = x;
-			cur_char++;
-			continue;
-		}
-		screen_buffer.data[screen_row*screen_buffer.width + screen_col] = *cur_char;
-		screen_col++;
-		cur_char++;
-	}
-	/*
 	for(uint32 sprite_row=0; sprite_row<sprite.height; sprite_row++){
 		if(screen_row >= screen_buffer.height){
 			break;
@@ -108,7 +111,6 @@ internal void terminal_renderer_blit_sprite(TerminalRendererHandel *terminal_ren
 		}
 		screen_row++;
 	}
-	*/
 }
 
 internal void terminal_renderer_clear_window(TerminalRendererHandel *terminal_renderer_h){

@@ -11,7 +11,7 @@ void run(){
 
 	while(frame < 1000){
 		terminal_renderer_clear_window(terminal_renderer_h);
-		terminal_renderer_blit_sprite(terminal_renderer_h, sprite_id, frame/100, frame/100);
+		terminal_renderer_blit_sprite(terminal_renderer_h, sprite_id, frame/10, frame/10);
 		terminal_renderer_print_frame(terminal_renderer_h);
 		frame++;
 	}
