@@ -59,7 +59,6 @@ internal TerminalRendererHandel *terminal_renderer_init(uint32 width, uint32 hei
 }
 
 internal uint32 terminal_renderer_load_sprite(TerminalRendererHandel *terminal_renderer_h, char* path){
-	SpriteContainer sprite_container = terminal_renderer_h->sprite_container;
 	FILE *fp = fopen(path, "rb");
 	fseek(fp, 0L, SEEK_END);
 	uint64 size = ftell(fp);
@@ -84,10 +83,10 @@ internal uint32 terminal_renderer_load_sprite(TerminalRendererHandel *terminal_r
 		cur_char++;
 	}
 
-	sprite_container.sprites[sprite_container.sprite_count].data = sprite_txt;
-	sprite_container.sprites[sprite_container.sprite_count].height = height;
-	sprite_container.sprites[sprite_container.sprite_count].width = (size/height)-1;
-	return sprite_container.sprite_count++;
+	terminal_renderer_h->sprite_container.sprites[terminal_renderer_h->sprite_container.sprite_count].data = sprite_txt;
+	terminal_renderer_h->sprite_container.sprites[terminal_renderer_h->sprite_container.sprite_count].height = height;
+	terminal_renderer_h->sprite_container.sprites[terminal_renderer_h->sprite_container.sprite_count].width = (size/height)-1;
+	return terminal_renderer_h->sprite_container.sprite_count++;
 }
 
 internal void terminal_renderer_blit_sprite(TerminalRendererHandel *terminal_renderer_h, uint32 sprite_id, uint32 x, uint32 y){
