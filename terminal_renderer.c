@@ -58,54 +58,52 @@ internal uint32 terminal_renderer_load_sprite(TerminalRendererHandel *terminal_r
 	rewind(fp);
 
 	char *sprite_txt = arena_alloc(&terminal_renderer_arena, size+1);
+	sprite_txt[size] = 0;
 	if(sprite_txt == NULL){
 		printf("ERROR: OUT OF MEM\n");
 		return 0;
 	}
 	fread(sprite_txt, size, 1, fp);
 
-	uint32 newlinecount = 0;
-	char *cur_char = sprite_txt;
-	uint32 height = 0;
-	while(*cur_char != '\0'){
-		if(*cur_char == '\n'){
-			char *temp = cur_char;
-			while(*temp){
-				*temp = *(temp+1);
-				temp++;
-			}
-			height++;
-			continue;
-		}
-		cur_char++;
-	}
 
 	terminal_renderer_h->sprite_container.sprites[terminal_renderer_h->sprite_container.sprite_count].data = sprite_txt;
-	terminal_renderer_h->sprite_container.sprites[terminal_renderer_h->sprite_container.sprite_count].height = height;
-	terminal_renderer_h->sprite_container.sprites[terminal_renderer_h->sprite_container.sprite_count].width = (size/height)-1;
 	return terminal_renderer_h->sprite_container.sprite_count++;
 }
 
 internal void terminal_renderer_blit_sprite(TerminalRendererHandel *terminal_renderer_h, uint32 sprite_id, uint32 x, uint32 y){
-	ScreenBuffer screen_buffer = terminal_renderer_h->screen_buffer;
+	ScreenBuffer *screen_buffer = &(terminal_renderer_h->screen_buffer);
 	Sprite sprite = terminal_renderer_h->sprite_container.sprites[sprite_id];
 	uint32 screen_row = y;
 	uint32 screen_col = x;
 	
+	bool32 writeing = 0;
 	char *cur_char = sprite.data;
-	for(uint32 sprite_row=0; sprite_row<sprite.height; sprite_row++){
-		if(screen_row >= screen_buffer.height){
+	while(*cur_char){
+		if(screen_row > screen_buffer->height){
 			break;
 		}
-		uint32 screen_col = x;
-		for(uint32 sprite_col=0; sprite_col<sprite.width; sprite_col++){
-			if(screen_col >= screen_buffer.width){
-				break;
-			}
-			screen_buffer.data[screen_row*screen_buffer.width + screen_col] = sprite.data[sprite_row*sprite.width + sprite_col];
-			screen_col++;
+		if(*cur_char == '\n'){
+			screen_row++;
+			screen_col = x;
+			writeing = 0;
+			cur_char++;
+			continue;
 		}
-		screen_row++;
+		if(*cur_char != ' '){
+			writeing = 1;
+		}
+		if(!writeing){
+			cur_char++;
+			screen_col++;
+			continue;
+		}
+		if(screen_col >= screen_buffer->width){
+			cur_char++;
+			continue;
+		}
+		screen_buffer->data[screen_row*screen_buffer->width + screen_col] = *cur_char;
+		screen_col++;
+		cur_char++;
 	}
 }
 
@@ -192,7 +190,7 @@ internal TerminalRendererHandel *terminal_renderer_init(TerminalRendererHandel *
 	terminal_renderer_h->sprite_container.sprites = arena_alloc(&terminal_renderer_arena, sizeof(Sprite)*100);
 	terminal_renderer_h->sprite_container.sprite_count = 0;
 
-	//clear_screen(terminal_renderer_h);
+	clear_screen(terminal_renderer_h);
 	printf("\e[?25l");
 	return terminal_renderer_h;
 }

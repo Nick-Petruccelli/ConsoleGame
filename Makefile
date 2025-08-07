@@ -1,4 +1,4 @@
 
 
 make:
-	gcc -Wall main.c -o bin/main
+	gcc -Wall -g main.c -o bin/main
