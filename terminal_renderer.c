@@ -5,7 +5,10 @@
 #include <string.h>
 #include <assert.h>
 #include "mylib.h"
+#include "arena.h"
 
+#define TERMINAL_RENDERER_ARENA_SIZE 100000 
+#define SCRATCH_ARENA_SIZE 1024
 
 typedef struct {
 	char* data;
@@ -24,39 +27,28 @@ typedef struct {
 	uint32 sprite_count;
 }SpriteContainer;
 
-typedef struct TerminalRendererHandel{
+typedef struct _terminal_renderer_handel {
 	ScreenBuffer screen_buffer;
 	SpriteContainer sprite_container;
+	Arena terminal_renderer_arena;
+	Arena scratch_arena;
 }TerminalRendererHandel;
 
-internal void clear_screen(){
+internal void clear_screen(TerminalRendererHandel *terminal_renderer_h){
 	struct winsize term_size;
 	ioctl(0, TIOCGWINSZ, &term_size);
 	uint16 term_height = term_size.ws_row;
 	uint16 term_width = term_size.ws_col;
-	char* empty_row = malloc(sizeof(char)*term_width + 1);
+	char* empty_row = arena_alloc(&terminal_renderer_h->scratch_arena, sizeof(char)*term_width + 1);
 	memset(empty_row, ' ', term_width);
 	empty_row[term_width] = '\0';
 	for(int row=0; row<term_height-1; row++){
 		printf("%s", empty_row);
 		printf("\n");
 	}
-	free(empty_row);
+	arena_free_all(&terminal_renderer_h->scratch_arena);
 }
 
-internal TerminalRendererHandel *terminal_renderer_init(uint32 width, uint32 height){
-	TerminalRendererHandel *terminal_renderer_h = malloc(sizeof(TerminalRendererHandel));	
-	terminal_renderer_h->screen_buffer.width = width;
-	terminal_renderer_h->screen_buffer.height = height;
-	terminal_renderer_h->screen_buffer.data = malloc(sizeof(char)*width*height);
-	
-	terminal_renderer_h->sprite_container.sprites = malloc(sizeof(Sprite)*100);
-	terminal_renderer_h->sprite_container.sprite_count = 0;
-
-	clear_screen();
-	printf("\e[?25l");
-	return terminal_renderer_h;
-}
 
 internal uint32 terminal_renderer_load_sprite(TerminalRendererHandel *terminal_renderer_h, char* path){
 	FILE *fp = fopen(path, "rb");
@@ -64,7 +56,7 @@ internal uint32 terminal_renderer_load_sprite(TerminalRendererHandel *terminal_r
 	uint64 size = ftell(fp);
 	rewind(fp);
 
-	char *sprite_txt = calloc(1, size+1);
+	char *sprite_txt = arena_alloc(&terminal_renderer_h->terminal_renderer_arena, size+1);
 	fread(sprite_txt, size, 1, fp);
 
 	uint32 newlinecount = 0;
@@ -132,7 +124,7 @@ internal void terminal_renderer_print_frame(TerminalRendererHandel *terminal_ren
 
 	uint32 vertical_padding = (term_height - screen_buffer.height) / 2;
 	uint32 horizontal_padding = (term_width - screen_buffer.width) / 2;
-	char* empty_row = malloc(sizeof(char)*term_width + 1);
+	char* empty_row = arena_alloc(&terminal_renderer_h->scratch_arena, sizeof(char)*term_width + 1);
 	memset(empty_row, ' ', term_width);
 	empty_row[term_width] = '\0';
 	for(uint32 row=0; row<vertical_padding-1; row++){
@@ -142,11 +134,11 @@ internal void terminal_renderer_print_frame(TerminalRendererHandel *terminal_ren
 
 
 	free(empty_row);
-	empty_row = malloc(sizeof(char)*horizontal_padding+1);
+	empty_row = arena_alloc(&terminal_renderer_h->scratch_arena, sizeof(char)*horizontal_padding+1);
 	memset(empty_row, ' ', horizontal_padding);
 	empty_row[horizontal_padding-1] = '/';
 	empty_row[horizontal_padding] = '\0';
-	char *top_bot_border = malloc(sizeof(char)*screen_buffer.width+1);
+	char *top_bot_border = arena_alloc(&terminal_renderer_h->scratch_arena, sizeof(char)*screen_buffer.width+1);
 	memset(top_bot_border, '=', screen_buffer.width);
 	top_bot_border[screen_buffer.width] = '\0';
 
@@ -171,26 +163,40 @@ internal void terminal_renderer_print_frame(TerminalRendererHandel *terminal_ren
 		printf("\n");
 	}
 
-	free(empty_row);
-	free(top_bot_border);
+	arena_free_all(&terminal_renderer_h->scratch_arena);
 }
 
-internal void screen_buffer_init(ScreenBuffer *screen_buffer, uint32 width, uint32 height){
-	screen_buffer->data = malloc(sizeof(char)*width*height);
-	screen_buffer->width = width;
-	screen_buffer->height =height;
-	for(uint32 row=0; row<screen_buffer->height; row++){
-		for(uint32 col=0; col<screen_buffer->width; col++){
-			screen_buffer->data[row*screen_buffer->width + col] = ' ';
+internal void screen_buffer_init(TerminalRendererHandel *terminal_renderer_h, uint32 width, uint32 height){
+	terminal_renderer_h->screen_buffer.data = arena_alloc(&terminal_renderer_h->terminal_renderer_arena, sizeof(char)*width*height);
+	terminal_renderer_h->screen_buffer.width = width;
+	terminal_renderer_h->screen_buffer.height =height;
+	for(uint32 row=0; row<terminal_renderer_h->screen_buffer.height; row++){
+		for(uint32 col=0; col<terminal_renderer_h->screen_buffer.width; col++){
+			terminal_renderer_h->screen_buffer.data[row*terminal_renderer_h->screen_buffer.width + col] = ' ';
 		}
 	}
 }
 
+internal TerminalRendererHandel *terminal_renderer_init(TerminalRendererHandel *terminal_renderer_h, uint32 width, uint32 height){
+	void *terminal_renderer_arena_buffer = malloc(TERMINAL_RENDERER_ARENA_SIZE * sizeof(byte));	
+	void *scratch_arena_buffer = malloc(SCRATCH_ARENA_SIZE * sizeof(byte));
+	arena_init(&terminal_renderer_h->terminal_renderer_arena, terminal_renderer_arena_buffer, TERMINAL_RENDERER_ARENA_SIZE);
+	arena_init(&terminal_renderer_h->scratch_arena, scratch_arena_buffer, SCRATCH_ARENA_SIZE);
+	screen_buffer_init(terminal_renderer_h, width, height);
+	
+	terminal_renderer_h->sprite_container.sprites = arena_alloc(&terminal_renderer_h->terminal_renderer_arena, sizeof(Sprite)*100);
+	terminal_renderer_h->sprite_container.sprite_count = 0;
+
+	clear_screen(terminal_renderer_h);
+	printf("\e[?25l");
+	return terminal_renderer_h;
+}
+
 internal void terminal_renderer_shutdown(TerminalRendererHandel *terminal_renderer_h){
+	free(terminal_renderer_h->terminal_renderer_arena.buffer);
+	free(terminal_renderer_h->scratch_arena.buffer);
 	for(uint32 i=0; i<terminal_renderer_h->sprite_container.sprite_count; i++){
 		free(terminal_renderer_h->sprite_container.sprites[i].data);
 	}
-	free(terminal_renderer_h->sprite_container.sprites);
-	free(terminal_renderer_h->screen_buffer.data);
 	printf("\e[?25h");
 }
