@@ -1,4 +1,4 @@
 
 
 make:
-	gcc -Wall -Werror main.c -o bin/main
+	gcc -Wall main.c -o bin/main

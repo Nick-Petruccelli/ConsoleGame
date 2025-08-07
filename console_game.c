@@ -1,10 +1,11 @@
 #include "terminal_renderer.h"
 #include "mylib.h"
 #include <stdio.h>
+#include "arena.h"
 
 void run(){
 	TerminalRendererHandel *terminal_renderer_h;
-	terminal_renderer_init(terminal_renderer_h, 50, 50);
+	terminal_renderer_h = terminal_renderer_init(terminal_renderer_h, 50, 50);
 
 	bool32 running = 1;
 	uint32 frame = 0;

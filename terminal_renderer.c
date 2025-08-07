@@ -10,6 +10,9 @@
 #define TERMINAL_RENDERER_ARENA_SIZE 100000 
 #define SCRATCH_ARENA_SIZE 1024
 
+global Arena terminal_renderer_arena = {};
+global Arena scratch_arena = {};
+
 typedef struct {
 	char* data;
 	uint16 width;
@@ -30,8 +33,6 @@ typedef struct {
 typedef struct _terminal_renderer_handel {
 	ScreenBuffer screen_buffer;
 	SpriteContainer sprite_container;
-	Arena terminal_renderer_arena;
-	Arena scratch_arena;
 }TerminalRendererHandel;
 
 internal void clear_screen(TerminalRendererHandel *terminal_renderer_h){
@@ -39,14 +40,14 @@ internal void clear_screen(TerminalRendererHandel *terminal_renderer_h){
 	ioctl(0, TIOCGWINSZ, &term_size);
 	uint16 term_height = term_size.ws_row;
 	uint16 term_width = term_size.ws_col;
-	char* empty_row = arena_alloc(&terminal_renderer_h->scratch_arena, sizeof(char)*term_width + 1);
+	char* empty_row = arena_alloc(&scratch_arena, sizeof(char)*term_width + 1);
 	memset(empty_row, ' ', term_width);
 	empty_row[term_width] = '\0';
 	for(int row=0; row<term_height-1; row++){
 		printf("%s", empty_row);
 		printf("\n");
 	}
-	arena_free_all(&terminal_renderer_h->scratch_arena);
+	arena_free_all(&scratch_arena);
 }
 
 
@@ -56,7 +57,11 @@ internal uint32 terminal_renderer_load_sprite(TerminalRendererHandel *terminal_r
 	uint64 size = ftell(fp);
 	rewind(fp);
 
-	char *sprite_txt = arena_alloc(&terminal_renderer_h->terminal_renderer_arena, size+1);
+	char *sprite_txt = arena_alloc(&terminal_renderer_arena, size+1);
+	if(sprite_txt == NULL){
+		printf("ERROR: OUT OF MEM\n");
+		return 0;
+	}
 	fread(sprite_txt, size, 1, fp);
 
 	uint32 newlinecount = 0;
@@ -124,7 +129,7 @@ internal void terminal_renderer_print_frame(TerminalRendererHandel *terminal_ren
 
 	uint32 vertical_padding = (term_height - screen_buffer.height) / 2;
 	uint32 horizontal_padding = (term_width - screen_buffer.width) / 2;
-	char* empty_row = arena_alloc(&terminal_renderer_h->scratch_arena, sizeof(char)*term_width + 1);
+	char* empty_row = arena_alloc(&scratch_arena, sizeof(char)*term_width + 1);
 	memset(empty_row, ' ', term_width);
 	empty_row[term_width] = '\0';
 	for(uint32 row=0; row<vertical_padding-1; row++){
@@ -133,12 +138,11 @@ internal void terminal_renderer_print_frame(TerminalRendererHandel *terminal_ren
 	}
 
 
-	free(empty_row);
-	empty_row = arena_alloc(&terminal_renderer_h->scratch_arena, sizeof(char)*horizontal_padding+1);
+	empty_row = arena_alloc(&scratch_arena, sizeof(char)*horizontal_padding+1);
 	memset(empty_row, ' ', horizontal_padding);
 	empty_row[horizontal_padding-1] = '/';
 	empty_row[horizontal_padding] = '\0';
-	char *top_bot_border = arena_alloc(&terminal_renderer_h->scratch_arena, sizeof(char)*screen_buffer.width+1);
+	char *top_bot_border = arena_alloc(&scratch_arena, sizeof(char)*screen_buffer.width+1);
 	memset(top_bot_border, '=', screen_buffer.width);
 	top_bot_border[screen_buffer.width] = '\0';
 
@@ -163,11 +167,11 @@ internal void terminal_renderer_print_frame(TerminalRendererHandel *terminal_ren
 		printf("\n");
 	}
 
-	arena_free_all(&terminal_renderer_h->scratch_arena);
+	arena_free_all(&scratch_arena);
 }
 
 internal void screen_buffer_init(TerminalRendererHandel *terminal_renderer_h, uint32 width, uint32 height){
-	terminal_renderer_h->screen_buffer.data = arena_alloc(&terminal_renderer_h->terminal_renderer_arena, sizeof(char)*width*height);
+	terminal_renderer_h->screen_buffer.data = arena_alloc(&terminal_renderer_arena, sizeof(char)*width*height);
 	terminal_renderer_h->screen_buffer.width = width;
 	terminal_renderer_h->screen_buffer.height =height;
 	for(uint32 row=0; row<terminal_renderer_h->screen_buffer.height; row++){
@@ -178,25 +182,24 @@ internal void screen_buffer_init(TerminalRendererHandel *terminal_renderer_h, ui
 }
 
 internal TerminalRendererHandel *terminal_renderer_init(TerminalRendererHandel *terminal_renderer_h, uint32 width, uint32 height){
+	terminal_renderer_h = malloc(sizeof(TerminalRendererHandel));
 	void *terminal_renderer_arena_buffer = malloc(TERMINAL_RENDERER_ARENA_SIZE * sizeof(byte));	
 	void *scratch_arena_buffer = malloc(SCRATCH_ARENA_SIZE * sizeof(byte));
-	arena_init(&terminal_renderer_h->terminal_renderer_arena, terminal_renderer_arena_buffer, TERMINAL_RENDERER_ARENA_SIZE);
-	arena_init(&terminal_renderer_h->scratch_arena, scratch_arena_buffer, SCRATCH_ARENA_SIZE);
+	arena_init(&terminal_renderer_arena, terminal_renderer_arena_buffer, TERMINAL_RENDERER_ARENA_SIZE);
+	arena_init(&scratch_arena, scratch_arena_buffer, SCRATCH_ARENA_SIZE);
 	screen_buffer_init(terminal_renderer_h, width, height);
 	
-	terminal_renderer_h->sprite_container.sprites = arena_alloc(&terminal_renderer_h->terminal_renderer_arena, sizeof(Sprite)*100);
+	terminal_renderer_h->sprite_container.sprites = arena_alloc(&terminal_renderer_arena, sizeof(Sprite)*100);
 	terminal_renderer_h->sprite_container.sprite_count = 0;
 
-	clear_screen(terminal_renderer_h);
+	//clear_screen(terminal_renderer_h);
 	printf("\e[?25l");
 	return terminal_renderer_h;
 }
 
 internal void terminal_renderer_shutdown(TerminalRendererHandel *terminal_renderer_h){
-	free(terminal_renderer_h->terminal_renderer_arena.buffer);
-	free(terminal_renderer_h->scratch_arena.buffer);
-	for(uint32 i=0; i<terminal_renderer_h->sprite_container.sprite_count; i++){
-		free(terminal_renderer_h->sprite_container.sprites[i].data);
-	}
+	free(terminal_renderer_arena.buffer);
+	free(scratch_arena.buffer);
+	free(terminal_renderer_h);
 	printf("\e[?25h");
 }

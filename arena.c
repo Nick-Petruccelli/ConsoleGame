@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stddef.h>
 #include <string.h>
+#include <stdio.h>
 
 #ifndef DEFAULT_ALIGN
 #define DEFAULT_ALIGN (2*sizeof(void*))
@@ -10,12 +11,11 @@
 
 
 bool32 is_power_of_two(uintptr x){
-	return x & (x-1);
+	return (x & (x-1)) == 0;
 }
 
 void arena_init(Arena *arena, void *backing_buffer, size_t buffer_size){
 	arena->buffer = (byte*)backing_buffer;
-	return;
 	arena->buffer_len = buffer_size;
 	arena->cur_offset = 0;
 	arena->prev_offset = 0;
@@ -36,11 +36,11 @@ uintptr align_foward(uintptr ptr, size_t align){
 }
 
 void *arena_alloc_align(Arena *arena, size_t size, size_t align){
-	uintptr cur_offset = arena->cur_offset;
-	uintptr offset = align_foward(cur_offset+size, align);
+	uintptr cur_ptr = (uintptr)arena->buffer + (uintptr)arena->cur_offset;
+	uintptr offset = align_foward(cur_ptr, align);
 	offset -= (uintptr)arena->buffer;
 
-	if(offset+size > (uintptr)arena->buffer + arena->buffer_len){
+	if(offset+size > arena->buffer_len){
 		return NULL;
 	}
 	void *ptr = &(arena->buffer[offset]);
