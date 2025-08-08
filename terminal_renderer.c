@@ -1,9 +1,10 @@
 #include <stdio.h>
-//TODO: Want to find another way to get terminal size without library
 #include <sys/ioctl.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <termios.h>
+#include <unistd.h>
 #include "mylib.h"
 #include "arena.h"
 
@@ -33,6 +34,8 @@ typedef struct {
 typedef struct _terminal_renderer_handel {
 	ScreenBuffer screen_buffer;
 	SpriteContainer sprite_container;
+	struct termios old_attributes;
+	struct termios new_attributes;
 }TerminalRendererHandel;
 
 internal void clear_screen(TerminalRendererHandel *terminal_renderer_h){
@@ -180,11 +183,11 @@ internal void screen_buffer_init(TerminalRendererHandel *terminal_renderer_h, ui
 }
 
 internal TerminalRendererHandel *terminal_renderer_init(TerminalRendererHandel *terminal_renderer_h, uint32 width, uint32 height){
-	terminal_renderer_h = malloc(sizeof(TerminalRendererHandel));
 	void *terminal_renderer_arena_buffer = malloc(TERMINAL_RENDERER_ARENA_SIZE * sizeof(byte));	
 	void *scratch_arena_buffer = malloc(SCRATCH_ARENA_SIZE * sizeof(byte));
 	arena_init(&terminal_renderer_arena, terminal_renderer_arena_buffer, TERMINAL_RENDERER_ARENA_SIZE);
 	arena_init(&scratch_arena, scratch_arena_buffer, SCRATCH_ARENA_SIZE);
+	terminal_renderer_h = arena_alloc(&terminal_renderer_arena, sizeof(TerminalRendererHandel));
 	screen_buffer_init(terminal_renderer_h, width, height);
 	
 	terminal_renderer_h->sprite_container.sprites = arena_alloc(&terminal_renderer_arena, sizeof(Sprite)*100);
@@ -192,12 +195,19 @@ internal TerminalRendererHandel *terminal_renderer_init(TerminalRendererHandel *
 
 	clear_screen(terminal_renderer_h);
 	printf("\e[?25l");
+
+	
+	tcgetattr(STDIN_FILENO, &terminal_renderer_h->old_attributes);
+	tcgetattr(STDIN_FILENO, &terminal_renderer_h->new_attributes);
+	terminal_renderer_h->new_attributes.c_lflag = 0;
+	tcsetattr(STDIN_FILENO, 0, &terminal_renderer_h->new_attributes);
+
 	return terminal_renderer_h;
 }
 
 internal void terminal_renderer_shutdown(TerminalRendererHandel *terminal_renderer_h){
+	tcsetattr(STDIN_FILENO, 0, &terminal_renderer_h->old_attributes);
 	free(terminal_renderer_arena.buffer);
 	free(scratch_arena.buffer);
-	free(terminal_renderer_h);
 	printf("\e[?25h");
 }
