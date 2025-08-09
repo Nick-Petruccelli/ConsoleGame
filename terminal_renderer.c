@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include "mylib.h"
 #include "arena.h"
+#include "terminal_renderer.h"
 
 #define TERMINAL_RENDERER_ARENA_SIZE 100000 
 #define SCRATCH_ARENA_SIZE 1024
@@ -171,6 +172,36 @@ internal void terminal_renderer_print_frame(TerminalRendererHandel *terminal_ren
 	arena_free_all(&scratch_arena);
 }
 
+
+internal KeyState terminal_renderer_get_key_state(){
+	KeyState out = {};
+	char input_buff[100];
+	size_t bytes_read = read(STDIN_FILENO, input_buff, sizeof(input_buff));
+	for(int32 i=0; i<bytes_read; i++){
+		switch (input_buff[i]) {
+			case 'h':
+				out.h = 1;
+			break;
+			case 'j':
+				out.j = 1;
+			break;
+			case 'k':
+				out.k = 1;
+			break;
+			case 'l':
+				out.l = 1;
+			break;
+			case 'i':
+				out.i = 1;
+			break;
+			case 'q':
+				out.q = 1;
+			break;
+		}
+	}
+	return out;
+}
+
 internal void screen_buffer_init(TerminalRendererHandel *terminal_renderer_h, uint32 width, uint32 height){
 	terminal_renderer_h->screen_buffer.data = arena_alloc(&terminal_renderer_arena, sizeof(char)*width*height);
 	terminal_renderer_h->screen_buffer.width = width;
@@ -200,6 +231,8 @@ internal TerminalRendererHandel *terminal_renderer_init(TerminalRendererHandel *
 	tcgetattr(STDIN_FILENO, &terminal_renderer_h->old_attributes);
 	tcgetattr(STDIN_FILENO, &terminal_renderer_h->new_attributes);
 	terminal_renderer_h->new_attributes.c_lflag = 0;
+	terminal_renderer_h->new_attributes.c_cc[VMIN] = 0;
+	terminal_renderer_h->new_attributes.c_cc[VTIME] = 0;
 	tcsetattr(STDIN_FILENO, 0, &terminal_renderer_h->new_attributes);
 
 	return terminal_renderer_h;
