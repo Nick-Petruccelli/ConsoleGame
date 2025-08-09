@@ -114,7 +114,7 @@ internal void terminal_renderer_blit_sprite(TerminalRendererHandel *terminal_ren
 internal void terminal_renderer_clear_window(TerminalRendererHandel *terminal_renderer_h){
 	ScreenBuffer screen_buffer = terminal_renderer_h->screen_buffer;
 	for(uint32 i=0; i<screen_buffer.width*screen_buffer.height; i++){
-		screen_buffer.data[i] = '#';
+		screen_buffer.data[i] = ' ';
 	}
 }
 
