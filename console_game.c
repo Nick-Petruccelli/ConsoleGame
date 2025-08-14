@@ -5,6 +5,17 @@
 #include "terminal_renderer.h"
 #include "mylib.h"
 
+typedef struct Card {
+	uint32 sprite_id;
+	uint32 max_attack_range;
+	uint32 min_attack_range;
+}Card;
+
+typedef struct Deck {
+	uint32 *card_ids;
+	uint32 cards_remaining;	
+}Deck;
+
 typedef struct Board {
 	uint32 *tile_data;
 	uint32 width;
@@ -18,6 +29,7 @@ typedef struct Board {
 typedef struct Hand {
 	uint32 *card_id_data;
 	uint32 max_cards_in_hand;
+	uint32 cur_cards_in_hand;
 	int32 selected_card;
 }Hand;
 
@@ -32,12 +44,14 @@ typedef struct HandDisplay {
 
 typedef struct GameState {
 	Board board;
+	Deck player_one_deck;
+	Deck player_two_deck;
 	HandDisplay hand_display;
 	Hand hand;
 	uint32 cursor_focus; //NOTE: curently I am only considering focus on board and focus on hand but left as int so I could extend to somthing like settings
 }GameState;
 
-//NOTE: cursot_focus defines
+//NOTE: cursor_focus defines
 #define FOCUS_BOARD 0
 #define FOCUS_HAND 1
 
@@ -70,8 +84,29 @@ void run(){
 	memset(game_state.board.tile_data, 0,sizeof(uint32) * game_state.board.width * game_state.board.height); 
 	game_state.board.tile_width = 14;
 	game_state.board.tile_height = 9;
+
+	game_state.hand_display.width = 8;
+	game_state.hand_display.height = 2;
 	game_state.hand_display.tile_width = 14;
 	game_state.hand_display.tile_height = 9;
+
+	game_state.player_one_deck.card_ids = malloc(sizeof(uint32) * 30);
+	game_state.player_one_deck.cards_remaining = 30;
+	game_state.hand.cur_cards_in_hand = 0;
+	game_state.hand.max_cards_in_hand = 8;
+	game_state.hand.card_id_data = malloc(sizeof(uint32) * game_state.hand.max_cards_in_hand);
+	game_state.hand.card_id_data[0] = card_on_board_sprite_id;
+
+	game_state.player_one_deck.cards_remaining = 0;
+	for(int i=0; i<30; i++){
+		game_state.player_one_deck.card_ids[i] = card_on_board_sprite_id;
+		game_state.player_one_deck.cards_remaining++;
+	}
+	for(int i=0; i<4; i++){
+		game_state.hand.card_id_data[i] = game_state.player_one_deck.card_ids[game_state.player_one_deck.cards_remaining - i - 1];
+		game_state.player_one_deck.cards_remaining--;
+		game_state.hand.cur_cards_in_hand++;
+	}
 	while(running){
 		KeyState key_state = terminal_renderer_get_key_state();
 		if(key_state.q){
@@ -111,7 +146,9 @@ void run(){
 			}else if(key_state.ctrl_k){
 			}else if(key_state.ctrl_l){
 			}else if(key_state.i){
-				game_state.hand.selected_card = card_on_board_sprite_id;
+				game_state.hand.selected_card = game_state.hand.card_id_data[game_state.hand_display.cur_y * game_state.hand_display.width + game_state.hand_display.cur_x];
+				game_state.hand.card_id_data[game_state.hand_display.cur_y * game_state.hand_display.width + game_state.hand_display.cur_x] = 0;
+				game_state.hand.cur_cards_in_hand--;
 				game_state.cursor_focus = FOCUS_BOARD;
 			}
 		}
@@ -126,6 +163,13 @@ void run(){
 				continue;
 			uint32 offset_x = (i % game_state.board.width * game_state.board.tile_width) + board_offset_x + 1;
 			uint32 offset_y = (i/game_state.board.width * game_state.board.tile_height) + board_offset_y + 1;
+			terminal_renderer_blit_sprite(terminal_renderer_h, card_on_board_sprite_id, offset_x, offset_y);
+		}
+		for(int i=0; i<game_state.hand.max_cards_in_hand; i++){
+			if(game_state.hand.card_id_data[i] == 0)
+				continue;
+			uint32 offset_x = (i % game_state.hand_display.width * game_state.hand_display.tile_width) + hand_display_offset_x + 1;
+			uint32 offset_y = (i/game_state.hand_display.width * game_state.hand_display.tile_height) + hand_display_offset_y + 1;
 			terminal_renderer_blit_sprite(terminal_renderer_h, card_on_board_sprite_id, offset_x, offset_y);
 		}
 		if(game_state.cursor_focus == FOCUS_BOARD){
