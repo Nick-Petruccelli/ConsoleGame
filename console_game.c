@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <string.h>
 #include "terminal_renderer.h"
 #include "mylib.h"
 
@@ -46,8 +47,13 @@ void run(){
 
 	bool32 running = 1;
 	uint32 frame = 0;
+	uint32 board_offset_x = 2;
+	uint32 board_offset_y = 2;
+	uint32 hand_display_offset_x = 110;
+	uint32 hand_display_offset_y = 30;
 	uint32 board_sprite_id = terminal_renderer_load_sprite(terminal_renderer_h, "resources/game_board.txt");
 	uint32 card_on_board_sprite_id = terminal_renderer_load_sprite(terminal_renderer_h, "resources/card_on_board.txt");
+	uint32 hand_display_sprite_id = terminal_renderer_load_sprite(terminal_renderer_h, "resources/hand_container.txt");
 	uint32 cursor_sprite_id = terminal_renderer_load_sprite(terminal_renderer_h, "resources/circle.txt");
 
 	char input;
@@ -61,6 +67,11 @@ void run(){
 	game_state.board.width = 7;
 	game_state.board.height = 5;
 	game_state.board.tile_data = malloc(sizeof(uint32) * game_state.board.width * game_state.board.height);
+	memset(game_state.board.tile_data, 0,sizeof(uint32) * game_state.board.width * game_state.board.height); 
+	game_state.board.tile_width = 14;
+	game_state.board.tile_height = 9;
+	game_state.hand_display.tile_width = 14;
+	game_state.hand_display.tile_height = 9;
 	while(running){
 		KeyState key_state = terminal_renderer_get_key_state();
 		if(key_state.q){
@@ -87,9 +98,13 @@ void run(){
 			}
 		}else if(game_state.cursor_focus == FOCUS_HAND){
 			if(key_state.h){
+				game_state.hand_display.cur_x--;
 			}else if(key_state.j){
+				game_state.hand_display.cur_y++;
 			}else if(key_state.k){
+				game_state.hand_display.cur_y--;
 			}else if(key_state.l){
+				game_state.hand_display.cur_x++;
 			}else if(key_state.ctrl_h){
 				game_state.cursor_focus = FOCUS_BOARD;
 			}else if(key_state.ctrl_j){
@@ -103,18 +118,23 @@ void run(){
 
 		
 		terminal_renderer_clear_window(terminal_renderer_h);
-		terminal_renderer_blit_sprite(terminal_renderer_h, board_sprite_id, 2, 2);
+		terminal_renderer_blit_sprite(terminal_renderer_h, board_sprite_id, board_offset_x, board_offset_y);
+		terminal_renderer_blit_sprite(terminal_renderer_h, hand_display_sprite_id, hand_display_offset_x, hand_display_offset_y);
 		terminal_renderer_blit_sprite(terminal_renderer_h, card_on_board_sprite_id, card_pos_x, card_pos_y);
 		for(int i=0; i<game_state.board.width * game_state.board.height; i++){
 			if(game_state.board.tile_data[i] == 0)
 				continue;
-			uint32 offset_x = (i % game_state.board.width * 14) + 3;
-			uint32 offset_y = (i/game_state.board.width * 9) + 3;
+			uint32 offset_x = (i % game_state.board.width * game_state.board.tile_width) + board_offset_x + 1;
+			uint32 offset_y = (i/game_state.board.width * game_state.board.tile_height) + board_offset_y + 1;
 			terminal_renderer_blit_sprite(terminal_renderer_h, card_on_board_sprite_id, offset_x, offset_y);
 		}
 		if(game_state.cursor_focus == FOCUS_BOARD){
-			uint32 cursor_screen_pos_x = (game_state.board.cur_x * 14) + 3;
-			uint32 cursor_screen_pos_y = (game_state.board.cur_y * 9) + 3;
+			uint32 cursor_screen_pos_x = (game_state.board.cur_x * game_state.board.tile_width) + board_offset_x + 1;
+			uint32 cursor_screen_pos_y = (game_state.board.cur_y * game_state.board.tile_height) + board_offset_y + 1;
+			terminal_renderer_blit_sprite(terminal_renderer_h, cursor_sprite_id, cursor_screen_pos_x, cursor_screen_pos_y);
+		}else if(game_state.cursor_focus == FOCUS_HAND){
+			uint32 cursor_screen_pos_x = (game_state.hand_display.cur_x * game_state.hand_display.tile_width) + hand_display_offset_x + 1;
+			uint32 cursor_screen_pos_y = (game_state.hand_display.cur_y * game_state.hand_display.tile_height) + hand_display_offset_y + 1;
 			terminal_renderer_blit_sprite(terminal_renderer_h, cursor_sprite_id, cursor_screen_pos_x, cursor_screen_pos_y);
 		}
 		terminal_renderer_print_frame(terminal_renderer_h);
