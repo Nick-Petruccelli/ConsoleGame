@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include "terminal_renderer.h"
 #include "mylib.h"
 
@@ -57,6 +58,9 @@ void run(){
 	GameState game_state = {};
 	game_state.hand.selected_card = -1;
 	game_state.cursor_focus = FOCUS_BOARD;
+	game_state.board.width = 7;
+	game_state.board.height = 5;
+	game_state.board.tile_data = malloc(sizeof(uint32) * game_state.board.width * game_state.board.height);
 	while(running){
 		KeyState key_state = terminal_renderer_get_key_state();
 		if(key_state.q){
@@ -78,7 +82,8 @@ void run(){
 				game_state.cursor_focus = FOCUS_HAND;
 			}else if(key_state.i){
 				if(game_state.hand.selected_card != -1)
-					game_state.board.tile_data[game_state.board.cur_y * game_state.board.width + game_state.board.cur_x] = game_state.hand.card_id_data[game_state.hand.selected_card];
+					game_state.board.tile_data[game_state.board.cur_y * game_state.board.width + game_state.board.cur_x] = game_state.hand.selected_card;
+				game_state.hand.selected_card = -1;
 			}
 		}else if(game_state.cursor_focus == FOCUS_HAND){
 			if(key_state.h){
@@ -91,6 +96,8 @@ void run(){
 			}else if(key_state.ctrl_k){
 			}else if(key_state.ctrl_l){
 			}else if(key_state.i){
+				game_state.hand.selected_card = card_on_board_sprite_id;
+				game_state.cursor_focus = FOCUS_BOARD;
 			}
 		}
 
@@ -98,6 +105,13 @@ void run(){
 		terminal_renderer_clear_window(terminal_renderer_h);
 		terminal_renderer_blit_sprite(terminal_renderer_h, board_sprite_id, 2, 2);
 		terminal_renderer_blit_sprite(terminal_renderer_h, card_on_board_sprite_id, card_pos_x, card_pos_y);
+		for(int i=0; i<game_state.board.width * game_state.board.height; i++){
+			if(game_state.board.tile_data[i] == 0)
+				continue;
+			uint32 offset_x = (i % game_state.board.width * 14) + 3;
+			uint32 offset_y = (i/game_state.board.width * 9) + 3;
+			terminal_renderer_blit_sprite(terminal_renderer_h, card_on_board_sprite_id, offset_x, offset_y);
+		}
 		if(game_state.cursor_focus == FOCUS_BOARD){
 			uint32 cursor_screen_pos_x = (game_state.board.cur_x * 14) + 3;
 			uint32 cursor_screen_pos_y = (game_state.board.cur_y * 9) + 3;
