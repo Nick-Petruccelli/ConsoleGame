@@ -11,6 +11,10 @@ typedef struct KeyState {
 	bool32 l;
 	bool32 i;
 	bool32 q;
+	bool32 ctrl_h;
+	bool32 ctrl_j;
+	bool32 ctrl_k;
+	bool32 ctrl_l;
 }KeyState;
 
 internal TerminalRendererHandel *terminal_renderer_init(TerminalRendererHandel *terminal_renderer_h, uint32 width, uint32 height);

@@ -83,7 +83,7 @@ internal void terminal_renderer_blit_sprite(TerminalRendererHandel *terminal_ren
 	bool32 writeing = 0;
 	char *cur_char = sprite.data;
 	while(*cur_char){
-		if(screen_row > screen_buffer->height){
+		if(screen_row >= screen_buffer->height){
 			break;
 		}
 		if(*cur_char == '\n'){
@@ -179,6 +179,18 @@ internal KeyState terminal_renderer_get_key_state(){
 	size_t bytes_read = read(STDIN_FILENO, input_buff, sizeof(input_buff));
 	for(int32 i=0; i<bytes_read; i++){
 		switch (input_buff[i]) {
+			case 8://ctrl+h
+				out.ctrl_h = 1;
+			break;
+			case 10://ctrl+j
+				out.ctrl_j = 1;
+			break;
+			case 11://ctrl+k
+				out.ctrl_k = 1;
+			break;
+			case 12://ctrl+l
+				out.ctrl_l = 1;
+			break;
 			case 'h':
 				out.h = 1;
 			break;
